@@ -16,7 +16,7 @@ interface AnalysisContextType {
  analysisResult: AnalysisResult | null;
  setSelectedFile: (file: File | null) => void;
  setPreviewUrl: (url: string | null) => void;
- startAnalysis: () => void;
+ startAnalysis: () => Promise<void>;
  resetAnalysis: () => void;
 }
 
@@ -59,15 +59,53 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
   null,
  );
 
- const startAnalysis = useCallback(() => {
-  // Mock: randomly pick one of the mock results
+ const startAnalysis = useCallback(async () => {
+  if (!selectedFile) return;
+
+  const apiUrl = process.env.NEXT_PUBLIC_ANALYSIS_API_URL;
+
+  if (apiUrl) {
+   try {
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    const response = await fetch(apiUrl, {
+     method: "POST",
+     body: formData,
+    });
+
+    if (!response.ok) throw new Error("API response error");
+
+    const data = await response.json();
+    // data looks like { prediction: "PNEUMONIA" | "NORMAL", confidence: number }
+
+    const diagnosisMapped =
+     data.prediction === "PNEUMONIA" ? "Neumonía" : "Normal";
+
+    // Pick generic details based on diagnosis for now
+    const baseResult =
+     MOCK_RESULTS.find((r) => r.diagnosis === diagnosisMapped) ||
+     MOCK_RESULTS[0];
+
+    setAnalysisResult({
+     ...baseResult,
+     confidence: data.confidence * 100, // Converting 0.93 to 93
+     analyzedAt: new Date().toISOString(),
+    });
+    return;
+   } catch (error) {
+    console.error("API Error, falling back to mock:", error);
+   }
+  }
+
+  // Fallback: randomly pick one of the mock results
   const randomResult =
    MOCK_RESULTS[Math.floor(Math.random() * MOCK_RESULTS.length)];
   setAnalysisResult({
    ...randomResult,
    analyzedAt: new Date().toISOString(),
   });
- }, []);
+ }, [selectedFile]);
 
  const resetAnalysis = useCallback(() => {
   setSelectedFile(null);

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnalysis } from "@/context/AnalysisContext";
 import styles from "./page.module.css";
@@ -9,6 +9,7 @@ export default function ResultsPage() {
  const router = useRouter();
  const { analysisResult, previewUrl, selectedFile, resetAnalysis } =
   useAnalysis();
+ const [showRecommendations, setShowRecommendations] = useState(false);
 
  const handleNewAnalysis = () => {
   resetAnalysis();
@@ -105,51 +106,77 @@ export default function ResultsPage() {
        </div>
       </div>
 
-      {/* Details Card */}
-      <div className={styles.card}>
-       <h3 className={styles.cardTitle}>
+      {/* Recommendations Button */}
+      {!showRecommendations && (
+       <button
+        className={styles.generateBtn}
+        onClick={() => setShowRecommendations(true)}
+       >
         <svg
-         width="18"
-         height="18"
+         width="20"
+         height="20"
          viewBox="0 0 24 24"
          fill="none"
-         stroke="var(--color-primary)"
+         stroke="currentColor"
          strokeWidth="2"
         >
-         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-         <polyline points="14,2 14,8 20,8" />
+         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+         <polyline points="17,8 12,3 7,8" />
+         <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
-        Detalles del análisis
-       </h3>
-       <p className={styles.cardText}>{analysisResult.details}</p>
-      </div>
+        Generar recomendaciones
+       </button>
+      )}
 
-      {/* Recommendations */}
-      <div className={styles.card}>
-       <h3 className={styles.cardTitle}>
-        <svg
-         width="18"
-         height="18"
-         viewBox="0 0 24 24"
-         fill="none"
-         stroke="var(--color-accent)"
-         strokeWidth="2"
-        >
-         <circle cx="12" cy="12" r="10" />
-         <line x1="12" y1="16" x2="12" y2="12" />
-         <line x1="12" y1="8" x2="12.01" y2="8" />
-        </svg>
-        Recomendaciones
-       </h3>
-       <ul className={styles.recommendationsList}>
-        {analysisResult.recommendations.map((rec, i) => (
-         <li key={i} className={styles.recommendationItem}>
-          <span className={styles.recDot}></span>
-          {rec}
-         </li>
-        ))}
-       </ul>
-      </div>
+      {/* Details Card */}
+      {showRecommendations && (
+       <>
+        <div className={styles.card}>
+         <h3 className={styles.cardTitle}>
+          <svg
+           width="18"
+           height="18"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="var(--color-primary)"
+           strokeWidth="2"
+          >
+           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+           <polyline points="14,2 14,8 20,8" />
+          </svg>
+          Detalles del análisis
+         </h3>
+         <p className={styles.cardText}>{analysisResult.details}</p>
+        </div>
+
+        {/* Recommendations */}
+        <div className={styles.card}>
+         <h3 className={styles.cardTitle}>
+          <svg
+           width="18"
+           height="18"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="var(--color-accent)"
+           strokeWidth="2"
+          >
+           <circle cx="12" cy="12" r="10" />
+           <line x1="12" y1="16" x2="12" y2="12" />
+           <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          Recomendaciones
+         </h3>
+         <ul className={styles.recommendationsList}>
+          {analysisResult.recommendations.map((rec, i) => (
+           <li key={i} className={styles.recommendationItem}>
+            <span className={styles.recDot}></span>
+            {rec}
+           </li>
+          ))}
+         </ul>
+        </div>
+       </>
+      )}
      </div>
 
      {/* Right column: Image preview */}
