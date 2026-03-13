@@ -7,9 +7,22 @@ import styles from "./page.module.css";
 
 export default function ResultsPage() {
  const router = useRouter();
- const { analysisResult, previewUrl, selectedFile, resetAnalysis } =
-  useAnalysis();
+ const {
+  analysisResult,
+  previewUrl,
+  selectedFile,
+  resetAnalysis,
+  getAIRecommendations,
+  isGenerating,
+ } = useAnalysis();
  const [showRecommendations, setShowRecommendations] = useState(false);
+
+ const handleGenerateRecommendations = async () => {
+  setShowRecommendations(true);
+  if (!analysisResult?.details) {
+   await getAIRecommendations();
+  }
+ };
 
  const handleNewAnalysis = () => {
   resetAnalysis();
@@ -110,7 +123,8 @@ export default function ResultsPage() {
       {!showRecommendations && (
        <button
         className={styles.generateBtn}
-        onClick={() => setShowRecommendations(true)}
+        onClick={handleGenerateRecommendations}
+        disabled={isGenerating}
        >
         <svg
          width="20"
@@ -124,14 +138,14 @@ export default function ResultsPage() {
          <polyline points="17,8 12,3 7,8" />
          <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
-        Generar recomendaciones
+        {isGenerating ? "Generando con IA..." : "Generar recomendaciones"}
        </button>
       )}
 
       {/* Details Card */}
       {showRecommendations && (
        <>
-        <div className={styles.card}>
+        <div className={`${styles.card} ${isGenerating ? styles.shimmer : ""}`}>
          <h3 className={styles.cardTitle}>
           <svg
            width="18"
@@ -146,11 +160,18 @@ export default function ResultsPage() {
           </svg>
           Detalles del análisis
          </h3>
-         <p className={styles.cardText}>{analysisResult.details}</p>
+         {isGenerating ? (
+          <div className={styles.loadingPlaceholder}>
+           <div className={styles.line}></div>
+           <div className={styles.line}></div>
+          </div>
+         ) : (
+          <p className={styles.cardText}>{analysisResult.details}</p>
+         )}
         </div>
 
         {/* Recommendations */}
-        <div className={styles.card}>
+        <div className={`${styles.card} ${isGenerating ? styles.shimmer : ""}`}>
          <h3 className={styles.cardTitle}>
           <svg
            width="18"
@@ -166,14 +187,22 @@ export default function ResultsPage() {
           </svg>
           Recomendaciones
          </h3>
-         <ul className={styles.recommendationsList}>
-          {analysisResult.recommendations.map((rec, i) => (
-           <li key={i} className={styles.recommendationItem}>
-            <span className={styles.recDot}></span>
-            {rec}
-           </li>
-          ))}
-         </ul>
+         {isGenerating ? (
+          <div className={styles.loadingPlaceholder}>
+           <div className={styles.line}></div>
+           <div className={styles.line}></div>
+           <div className={styles.line}></div>
+          </div>
+         ) : (
+          <ul className={styles.recommendationsList}>
+           {analysisResult.recommendations?.map((rec, i) => (
+            <li key={i} className={styles.recommendationItem}>
+             <span className={styles.recDot}></span>
+             {rec}
+            </li>
+           ))}
+          </ul>
+         )}
         </div>
        </>
       )}

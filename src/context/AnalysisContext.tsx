@@ -14,9 +14,11 @@ interface AnalysisContextType {
  selectedFile: File | null;
  previewUrl: string | null;
  analysisResult: AnalysisResult | null;
+ isGenerating: boolean;
  setSelectedFile: (file: File | null) => void;
  setPreviewUrl: (url: string | null) => void;
  startAnalysis: () => Promise<void>;
+ getAIRecommendations: () => Promise<void>;
  resetAnalysis: () => void;
 }
 
@@ -58,6 +60,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
   null,
  );
+ const [isGenerating, setIsGenerating] = useState(false);
 
  const startAnalysis = useCallback(async () => {
   if (!selectedFile) return;
@@ -77,19 +80,14 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
     if (!response.ok) throw new Error("API response error");
 
     const data = await response.json();
-    // data looks like { prediction: "PNEUMONIA" | "NORMAL", confidence: number }
-
     const diagnosisMapped =
      data.prediction === "PNEUMONIA" ? "Neumonía" : "Normal";
 
-    // Pick generic details based on diagnosis for now
-    const baseResult =
-     MOCK_RESULTS.find((r) => r.diagnosis === diagnosisMapped) ||
-     MOCK_RESULTS[0];
-
     setAnalysisResult({
-     ...baseResult,
-     confidence: data.confidence * 100, // Converting 0.93 to 93
+     diagnosis: diagnosisMapped,
+     confidence: data.confidence * 100,
+     details: "", // Start empty to trigger Gemini
+     recommendations: [],
      analyzedAt: new Date().toISOString(),
     });
     return;
@@ -98,14 +96,63 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
    }
   }
 
-  // Fallback: randomly pick one of the mock results
+  // Fallback: randomly pick one of the mock results BUT empty details for Gemini
   const randomResult =
    MOCK_RESULTS[Math.floor(Math.random() * MOCK_RESULTS.length)];
   setAnalysisResult({
    ...randomResult,
+   details: "", // Explicitly empty to force Gemini generation
+   recommendations: [],
    analyzedAt: new Date().toISOString(),
   });
  }, [selectedFile]);
+
+ const getAIRecommendations = useCallback(async () => {
+  if (!analysisResult) return;
+
+  setIsGenerating(true);
+  try {
+   const response = await fetch("/api/recommendations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+     diagnosis: analysisResult.diagnosis,
+     confidence: analysisResult.confidence,
+    }),
+   });
+
+   if (!response.ok) throw new Error("Failed to fetch recommendations");
+
+   const data = await response.json();
+   setAnalysisResult((prev) =>
+    prev
+     ? {
+        ...prev,
+        details: data.details,
+        recommendations: data.recommendations,
+       }
+     : null,
+   );
+  } catch (error) {
+   console.error("Gemini API Error, falling back to mock details:", error);
+   const fallbackResult = MOCK_RESULTS.find(
+    (r) => r.diagnosis === analysisResult.diagnosis,
+   );
+   if (fallbackResult) {
+    setAnalysisResult((prev) =>
+     prev
+      ? {
+         ...prev,
+         details: fallbackResult.details,
+         recommendations: fallbackResult.recommendations,
+        }
+      : null,
+    );
+   }
+  } finally {
+   setIsGenerating(false);
+  }
+ }, [analysisResult]);
 
  const resetAnalysis = useCallback(() => {
   setSelectedFile(null);
@@ -114,6 +161,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
   }
   setPreviewUrl(null);
   setAnalysisResult(null);
+  setIsGenerating(false);
  }, [previewUrl]);
 
  return (
@@ -122,9 +170,11 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
     selectedFile,
     previewUrl,
     analysisResult,
+    isGenerating,
     setSelectedFile,
     setPreviewUrl,
     startAnalysis,
+    getAIRecommendations,
     resetAnalysis,
    }}
   >
